@@ -1,6 +1,6 @@
 # WOLF·JS
 
-Raycastingová FPS v čistém HTML/CSS/JS po vzoru Wolfensteina 3D. Tři sektory, čtyři zbraně, dva bossové.
+Raycastingová FPS v čistém HTML/CSS/JS po vzoru Wolfensteina 3D. Čtyři sektory, čtyři zbraně, dva bossové.
 Žádné knihovny, žádné externí obrázky ani zvuky — **všechna grafika i zvuk
 vznikají za běhu v kódu**.
 
@@ -30,31 +30,40 @@ ne jako ES moduly — díky tomu hra běží i z `file://`.
 | `E` / `Mezerník` | dveře, páky, tajné zdi |
 | `1` `2` `3` `4` (česky `+` `ě` `š` `č`) | nůž / pistole / samopal / brokovnice |
 | `Q`, kolečko myši | přepínání zbraní |
-| `Tab` | velká mapa |
+| `Tab` | velká mapa (nepřátelé jen ti, na které právě vidíš) |
 | `Esc` | pauza a nastavení (citlivost, zvuk, vertikální pohled, rozlišení, mipmapy, filtr textur, vyhlazení) |
 
 ## Levely
 
-Tři sektory na mřížce 40×40. Zdraví, munice a zbraně se nesou dál, klíče ne.
+Čtyři sektory na mřížce 40×40, na střídačku místnosti a bludiště. Zdraví,
+munice a zbraně se nesou dál, klíče ne.
 
-**1 · Pevnost** — velké místnosti: cela (start) → vstupní hala → kasárna
-(samopal) → sklad (stříbrný klíč, brokovnice, tajná komora) → jídelna (zlatý
-klíč) → trůnní sál s generálem Wolfheimem a pákou výtahu.
+**1 · Pevnost** (místnosti) — cela → vstupní hala → kasárna (samopal) → sklad
+(stříbrný klíč, brokovnice, tajná komora) → jídelna (zlatý klíč) → trůnní sál.
 
-**2 · Bludiště** — síť chodeb šířky 1 se smyčkami a slepými konci, pár malých
-komor. Skladiště s brokovnicí na severovýchodě, stříbrná komora na západě,
-zlatá na východě, výtah na jihu. Tajný výklenek v jižní slepé chodbě.
+**2 · Bludiště** (chodby) — síť chodeb šířky 1 se smyčkami a slepými konci.
+Skladiště s brokovnicí, stříbrná komora na západě, zlatá na východě, výtah na jihu.
 
-**3 · Katakomby** — hustší bludiště kolem centrální arény. Stříbrný klíč na
-severovýchodě, zlatý na jihovýchodě, aréna s Řezníkem (zlaté dveře) a za ní
-výtah. Tajný výklenek mezi jižními slepými chodbami.
+**3 · Kasematy** (místnosti) — deset sálů spojených dveřmi ve společných stěnách:
+strážnice, pokladnice, kasárna, psinec, zbrojnice, zlatá a stříbrná komora.
 
-Levely 2 a 3 vznikly z makro-uzlů (5×5, rozestup 8) a hran s dveřmi — mapa je
-ale uložená jako obyčejné ASCII v [js/map.js](js/map.js), takže se dá upravit
-ručně stejně jako první level.
+**4 · Katakomby** (chodby + aréna) — hustší bludiště kolem centrální arény
+s Řezníkem, za ní výtah. Konec hry.
 
-Tajné zdi otevřeš tak, že se k nim postavíš a zmáčkneš `E`. Páka jde použít až
-po zabití bosse (v Bludišti boss není).
+**Arény s bossem** (sektory 1 a 4): boss v nich na začátku není. Jakmile
+vejdeš dovnitř, dveře se zavřou a zapečetí, a teprve pak se boss zjeví.
+Pečeť povolí až s jeho smrtí.
+
+**Rozmístění nepřátel** je při každém startu trochu jiné: každý se posune na
+náhodnou volnou dlaždici do tří kroků od autorské pozice, ale nepřejde dveře,
+nevleze do startovní místnosti ani na dekoraci. Stráže u klíčů zůstávají stráže.
+
+Levely 2–4 vznikly z makro-uzlů (5×5, rozestup 8) a hran s dveřmi — mapy jsou
+ale uložené jako obyčejné ASCII v [js/map.js](js/map.js), takže se dají upravit
+ručně stejně jako první sektor.
+
+Tajné zdi otevřeš tak, že se k nim postavíš a zmáčkneš `E`. Páka jde použít
+až po zabití bosse (v sektorech bez bosse hned).
 
 ### Kontrola levelu
 
@@ -80,7 +89,7 @@ neotevřeš dveře) nestojí žádný nepřítel.
 | Vlčák | 15 | rychlý, jde přímo na tebe, jen na blízko |
 | Důstojník | 58 | dávky po třech; drží odstup 4–9, hodně krouží a kryje se |
 | **Generál Wolfheim** (L1) | 480 | dva kulomety, devítiranné dávky |
-| **Řezník** (L3) | 620 | totéž, jen tužší |
+| **Řezník** (L4) | 620 | totéž, jen tužší |
 
 ### AI vojáků
 

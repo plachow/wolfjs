@@ -120,6 +120,7 @@
         }
         enemies.push({
           kind: 'enemy', def: d, type: type,
+          hidden: !!(d.boss && level.arena),      // boss v aréně čeká na zapečetění dveří
           x: x, y: y, r: d.radius,
           hp: Math.round(d.hp * hpMul), maxHp: Math.round(d.hp * hpMul),
           dmgMul: dmgMul,
@@ -155,7 +156,69 @@
       }
     }
 
+    scatter(level);
     assignGuardians(level);
+  }
+
+  /**
+   * Trochu náhody: každý nepřítel (kromě bosse) se posune na náhodnou volnou
+   * dlaždici do 3 kroků od autorské pozice. Nepřechází dveře (zůstane ve své
+   * místnosti), nevleze do startovní místnosti ani na dekoraci.
+   */
+  function scatter(level) {
+    var w = level.w, key = function (x, y) { return y * w + x; };
+
+    // startovní místnost: co je dosažitelné bez otevření dveří
+    var safe = {}, sx = level.start.x | 0, sy = level.start.y | 0;
+    var q = [[sx, sy]]; safe[key(sx, sy)] = 1;
+    while (q.length) {
+      var c = q.pop();
+      for (var k = 0; k < 4; k++) {
+        var nx = c[0] + [1, -1, 0, 0][k], ny = c[1] + [0, 0, 1, -1][k];
+        if (W.Map.at(nx, ny) !== 0 || safe[key(nx, ny)]) continue;
+        safe[key(nx, ny)] = 1; q.push([nx, ny]);
+      }
+    }
+
+    var taken = {};
+    for (var i = 0; i < decos.length; i++) if (decos[i].blocking) taken[key(decos[i].x | 0, decos[i].y | 0)] = 1;
+
+    for (i = 0; i < enemies.length; i++) {
+      var e = enemies[i];
+      if (e.def.boss) continue;
+      var ox = e.x | 0, oy = e.y | 0;
+      var seen = {}; seen[key(ox, oy)] = 1;
+      var cands = [[ox, oy]], front = [[ox, oy, 0]];
+      while (front.length) {
+        var f = front.shift();
+        if (f[2] >= 3) continue;
+        for (k = 0; k < 4; k++) {
+          nx = f[0] + [1, -1, 0, 0][k]; ny = f[1] + [0, 0, 1, -1][k];
+          var kk = key(nx, ny);
+          if (seen[kk] || W.Map.at(nx, ny) !== 0) continue;   // dveře i zdi zastaví
+          seen[kk] = 1;
+          front.push([nx, ny, f[2] + 1]);
+          if (!safe[kk] && !taken[kk]) cands.push([nx, ny]);
+        }
+      }
+      var pick = cands[(rnd() * cands.length) | 0];
+      if (!pick || taken[key(pick[0], pick[1])]) continue;
+      taken[key(pick[0], pick[1])] = 1;
+      e.x = pick[0] + 0.5 + (rnd() - 0.5) * 0.4;
+      e.y = pick[1] + 0.5 + (rnd() - 0.5) * 0.4;
+      e.lastX = e.lkX = e.x; e.lastY = e.lkY = e.y;
+    }
+  }
+
+  /** Boss v aréně se zjeví (volá hra po zapečetění dveří). */
+  function revealBoss(p) {
+    for (var i = 0; i < enemies.length; i++) {
+      var e = enemies[i];
+      if (!e.hidden) continue;
+      e.hidden = false;
+      e.tint = 1;
+      alert(e, p);
+    }
   }
 
   /** Vojáci do 3 dlaždic od klíče nebo páky drží pozici a nechodí za hráčem daleko. */
@@ -170,7 +233,7 @@
       if (e.def.melee || e.def.boss) continue;
       for (var k = 0; k < posts.length; k++) {
         var dx = posts[k][0] - e.x, dy = posts[k][1] - e.y;
-        if (dx * dx + dy * dy <= 9) { e.post = { x: e.x, y: e.y }; e.leash = 3.5; break; }
+        if (dx * dx + dy * dy <= 16) { e.post = { x: e.x, y: e.y }; e.leash = 3.5; break; }
       }
     }
   }
@@ -207,7 +270,7 @@
     }
     for (i = 0; i < enemies.length; i++) {
       e = enemies[i];
-      if (e === ignore || e.state === 'die' || e.state === 'dead') continue;
+      if (e === ignore || e.hidden || e.state === 'die' || e.state === 'dead') continue;
       if (Math.abs(x - e.x) < e.r + 0.16 && Math.abs(y - e.y) < e.r + 0.16) return true;
     }
     return false;
@@ -225,8 +288,9 @@
   function enemyPassable(cx, cy) {
     var id = W.Map.at(cx, cy);
     if (id === 0) return !decoBlocksCell(cx, cy);
-    if (id === 7) return true;
-    if (id === 8 || id === 9) { var d = W.Map.doorAt(cx, cy); return !!d && d.open > 0.5; }
+    var d = W.Map.doorAt(cx, cy);
+    if (id === 7) return !!d && (d.lock === 0 || d.open > 0.5);
+    if (id === 8 || id === 9) return !!d && d.open > 0.5;
     return false;
   }
 
@@ -235,7 +299,7 @@
     var id = W.Map.at(cx, cy);
     if (id !== 7) return;
     var d = W.Map.doorAt(cx, cy);
-    if (!d) return;
+    if (!d || d.lock !== 0) return;
     if (d.state === 'closed' || d.state === 'closing') {
       d.state = 'opening';
       if (playerNear && W.Audio) W.Audio.play('door');
@@ -375,6 +439,7 @@
      ============================================================ */
   function updateEnemy(e, dt, p) {
     var d = e.def;
+    if (e.hidden) return;
     var dx = p.x - e.x, dy = p.y - e.y;
     var dist = Math.sqrt(dx * dx + dy * dy);
     e.t += dt;
@@ -549,7 +614,7 @@
     var p = { x: x, y: y };
     for (var i = 0; i < enemies.length; i++) {
       var e = enemies[i];
-      if (e.alerted || e.state === 'dead' || e.state === 'die') continue;
+      if (e.alerted || e.hidden || e.state === 'dead' || e.state === 'die') continue;
       var dx = e.x - x, dy = e.y - y, dd = dx * dx + dy * dy;
       if (dd < radius * radius * 0.3 || (dd < radius * radius && los(e.x, e.y, x, y))) alert(e, p);
     }
@@ -604,7 +669,7 @@
     var cos = Math.cos(angle), sin = Math.sin(angle);
     for (var i = 0; i < enemies.length; i++) {
       var e = enemies[i];
-      if (e.state === 'die' || e.state === 'dead') continue;
+      if (e.hidden || e.state === 'die' || e.state === 'dead') continue;
       var dx = e.x - px, dy = e.y - py;
       var dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > maxDist || dist > bestD) continue;
@@ -667,6 +732,7 @@
     }
     for (i = 0; i < enemies.length; i++) {
       e = enemies[i];
+      if (e.hidden) continue;
       sprites.push({ x: e.x, y: e.y, frame: e.frame, scale: e.scale, tint: e.tint * 0.55, lift: 0 });
     }
   }
@@ -674,7 +740,7 @@
   function occupies(cx, cy) {
     for (var i = 0; i < enemies.length; i++) {
       var e = enemies[i];
-      if (e.state === 'dead') continue;
+      if (e.hidden || e.state === 'dead') continue;
       if ((e.x | 0) === cx && (e.y | 0) === cy) return true;
     }
     return false;
@@ -704,6 +770,7 @@
     entityBlocks: entityBlocks,
     occupies: occupies,
     bossAlive: bossAlive,
+    revealBoss: revealBoss,
     setHooks: function (h) { hooks = h; }
   };
 

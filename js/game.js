@@ -28,6 +28,8 @@
   var difficulty = 1;
   var levelTime = 0;
   var levelIndex = 0;
+  var introT = 0;                       // nápis se jménem sektoru po startu
+  var arena = { triggered: false, revealed: false, done: false };
   var mapBig = false;
   var attractA = 0;
   var lastRoom = null;
@@ -106,6 +108,8 @@
     levelTime = 0;
     lastRoom = Map.roomAt(P.x | 0, P.y | 0);     // ať se hláška nezopakuje hned
     flashT = 0;
+    introT = 3.4;
+    arena.triggered = arena.revealed = arena.done = false;
     running = true;
 
     UI.setFloor(index + 1);
@@ -226,12 +230,54 @@
     Map.updateDoors(dt);
     Map.updateSecrets(dt);
     Ent.update(dt, P);
+    updateArena();
     markSeen();
     checkRoom();
     syncHud(false);
   }
 
   var fireLatch = false;
+
+  /**
+   * Aréna s bossem: jakmile je hráč uvnitř, dveře na obvodu se zavřou
+   * a zapečetí; až jsou zavřené, boss se zjeví. Po jeho smrti pečeť povolí.
+   */
+  function updateArena() {
+    var A = Map.level.arena;
+    if (!A || arena.done) return;
+    var doors = Map.level.doors, i, d;
+
+    if (!arena.triggered) {
+      if (!(P.x > A.x0 + 0.7 && P.x < A.x1 + 0.3 && P.y > A.y0 + 0.7 && P.y < A.y1 + 0.3)) return;
+      arena.triggered = true;
+      for (i = 0; i < doors.length; i++) {
+        d = doors[i];
+        if (d.x < A.x0 - 1 || d.x > A.x1 + 1 || d.y < A.y0 - 1 || d.y > A.y1 + 1) continue;
+        d.sealed = true; d.lock = 3;
+        if (d.open > 0) d.state = 'closing';
+      }
+      Audio.play('door');
+      UI.toast('DVEŘE SE ZAPEČETILY!', 'bad');
+      return;
+    }
+
+    if (!arena.revealed) {
+      for (i = 0; i < doors.length; i++) if (doors[i].sealed && doors[i].open > 0.02) return;
+      arena.revealed = true;
+      Ent.revealBoss(P);
+      flashT = 0.2;
+      return;
+    }
+
+    if (!Ent.bossAlive()) {
+      for (i = 0; i < doors.length; i++) {
+        d = doors[i];
+        if (d.sealed) { d.sealed = false; d.lock = d.lock0; }
+      }
+      arena.done = true;
+      UI.toast('Pečeť povolila.', 'good');
+    }
+  }
 
   /** Posun s klouzáním po stěnách a objektech. */
   function tryMove(dx, dy) {
@@ -264,6 +310,9 @@
       if (id === 7 || id === 8 || id === 9) {
         var door = Map.doorAt(cx, cy);
         if (!door) return;
+        if (door.lock === 3) {
+          UI.toast('Dveře jsou zapečetěné — dokud boss žije.', 'bad'); Audio.play('doorLocked'); return;
+        }
         if (door.lock === 1 && !P.keys.gold) {
           UI.toast('Potřebuješ ZLATÝ klíč', 'bad'); Audio.play('doorLocked'); return;
         }
@@ -527,6 +576,7 @@
         else if (id === 8) col = '#ffb02e';
         else if (id === 9) col = '#dbe4f0';
         else if (id === 10) col = lv.switchOn ? '#4ade80' : '#c1121f';
+        if ((id === 7 || id === 8 || id === 9) && Map.doorAt(x, y) && Map.doorAt(x, y).sealed) col = '#ff2d55';
         else {
           var r = Map.roomAt(x, y);
           col = r ? r.col : '#586074';
@@ -544,11 +594,12 @@
       g.fillStyle = it.def.key ? '#ffe07a' : (it.def.treasure ? '#ffb02e' : '#6ee7a8');
       g.fillRect(it.x * cs - 1, it.y * cs - 1, 2.5, 2.5);
     }
+    // nepřátelé jen ti, na které teď skutečně vidíš – žádné odhalování za rohem
     for (i2 = 0; i2 < Ent.enemies.length; i2++) {
       var e = Ent.enemies[i2];
-      if (e.state === 'dead') continue;
+      if (e.hidden || e.state === 'dead') continue;
       var dd = (e.x - P.x) * (e.x - P.x) + (e.y - P.y) * (e.y - P.y);
-      if (dd > 90) continue;
+      if (dd > 196 || !Ent.los(P.x, P.y, e.x, e.y)) continue;
       g.fillStyle = e.def.boss ? '#ff2d55' : (e.alerted ? '#ff6b6b' : '#a9576b');
       var s = e.def.boss ? 4 : 2.6;
       g.fillRect(e.x * cs - s / 2, e.y * cs - s / 2, s, s);
@@ -597,6 +648,23 @@
     if (running && !P.dead) {
       Weap.render(ctx, w, h, P.bobX, P.bobY);
       drawMinimap(dt);
+    }
+
+    // nápis s číslem a jménem sektoru po startu
+    if (running && introT > 0) {
+      introT -= dt;
+      var a = Math.min(1, introT, (3.4 - introT) * 3);
+      var band = h * 0.16;
+      ctx.fillStyle = 'rgba(4,5,8,' + (0.72 * a) + ')';
+      ctx.fillRect(0, h * 0.30 - band / 2, w, band);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(255,176,46,' + a + ')';
+      ctx.font = 'bold ' + Math.round(h * 0.075) + 'px Consolas, monospace';
+      ctx.fillText('SEKTOR ' + (levelIndex + 1), w / 2, h * 0.30 - band * 0.05);
+      ctx.fillStyle = 'rgba(232,237,245,' + a + ')';
+      ctx.font = Math.round(h * 0.04) + 'px Consolas, monospace';
+      ctx.fillText(Map.level.name.toUpperCase(), w / 2, h * 0.30 + band * 0.32);
+      ctx.textAlign = 'left';
     }
 
     // rudý nádech při zásahu
