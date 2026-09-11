@@ -4,6 +4,8 @@ Raycastingová FPS v čistém HTML/CSS/JS po vzoru Wolfensteina 3D. Tři sektory
 Žádné knihovny, žádné externí obrázky ani zvuky — **všechna grafika i zvuk
 vznikají za běhu v kódu**.
 
+**Hraj online: <https://plachow.github.io/wolfjs/>**
+
 ## Spuštění
 
 Dvojklik na `index.html`, nebo přes lokální server:
