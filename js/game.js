@@ -380,11 +380,17 @@
     for (var i = 0; i < pellets; i++) {
       var spread = def.spread * (P.moving ? (pellets > 1 ? 1.25 : 1.7) : 1);
       var angle = P.a + (Math.random() - 0.5) * spread;
-      var e = Ent.pick(P.x, P.y, angle, def.range, pellets > 1 ? 0.01 : spread * 0.6);
+      var e = Ent.pick(P.x, P.y, angle, def.range, pellets > 1 ? 0.02 : spread * 0.6);
       if (!e) continue;
       var dist = Math.hypot(e.x - P.x, e.y - P.y);
       var dmg = def.dmg[0] + Math.random() * (def.dmg[1] - def.dmg[0]);
-      if (def.useAmmo > 0) dmg *= Math.max(pellets > 1 ? 0.3 : 0.55, 1 - dist / (def.range * (pellets > 1 ? 1.1 : 2.2)));
+      if (pellets > 1) {
+        // broky: mírný pokles s dálkou, zblízka bonus – na 2 dlaždice to musí složit důstojníka
+        dmg *= Math.max(0.35, 1 - dist / (def.range * 1.6));
+        if (dist < 2.5) dmg *= 1.25;
+      } else if (def.useAmmo > 0) {
+        dmg *= Math.max(0.55, 1 - dist / (def.range * 2.2));
+      }
       dmg = Math.max(1, Math.round(dmg));
       Ent.hurt(e, dmg, P.x, P.y);
       hitAny = true;

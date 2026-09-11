@@ -37,8 +37,8 @@
     },
     {
       id: 3, key: 'shotgun', name: 'Brokovnice', short: 'BROKOVNICE', ammoType: 'shells',
-      useAmmo: 1, pellets: 7, dmg: [5, 12], range: 11, rate: 0.95,
-      spread: 0.22, auto: false, snd: 'shotgun', noise: 17,
+      useAmmo: 1, pellets: 8, dmg: [7, 14], range: 12, rate: 0.8,
+      spread: 0.17, auto: false, snd: 'shotgun', noise: 17,
       frames: ['sg_i', 'sg_a', 'sg_b', 'sg_c'],
       seq: [0.05, 0.12, 0.17, 0.14], pumpAt: 2, pumpSnd: 'pump'
     }

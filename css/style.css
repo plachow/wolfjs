@@ -254,6 +254,7 @@ kbd{
 .btn:hover{ filter:brightness(1.22); }
 .btn:active{ transform:translateY(2px); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 0 0 #0a0c11; }
 .btn:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
+.btn kbd{ margin-left:6px; font-size:9px; padding:.05em .3em; vertical-align:1px; color:#1a1206; background:rgba(255,255,255,.35); border-color:rgba(0,0,0,.25); box-shadow:none; }
 
 .btn-primary{
   color:#1a1206;

@@ -72,6 +72,7 @@
       e.preventDefault();
       if (App.state === 'playing') pause();
       else if (App.state === 'paused') resume();
+      else if (App.state === 'menu' && UI.overlay === 'controls') UI.showOverlay('menu');
       return;
     }
     if (k === 'tab') e.preventDefault();
@@ -101,17 +102,17 @@
   /* ============================================================
      MYŠ / POINTER LOCK
      ============================================================ */
-  var mouse = { dx: 0, dy: 0, down: false, locked: false };
+  var mouse = { dx: 0, dy: 0, down: false, locked: false, hadLock: false, lockBroken: false };
 
   function requestLock() {
     var stage = document.getElementById('stage');
-    if (!stage || !stage.requestPointerLock) return;
+    if (!stage || !stage.requestPointerLock) { mouse.lockBroken = true; return; }
     try {
       // V některých rámech (náhled v IDE, sandboxovaný iframe) zámek nejde —
-      // hra musí fungovat i bez něj, proto tiše ignorujeme.
+      // hra musí fungovat i bez něj, proto tiše ignorujeme, jen si to zapamatujeme.
       var p = stage.requestPointerLock();
-      if (p && p.catch) p.catch(function () {});
-    } catch (e) {}
+      if (p && p.catch) p.catch(function () { mouse.lockBroken = true; });
+    } catch (e) { mouse.lockBroken = true; }
   }
   function exitLock() {
     try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) {}
@@ -126,6 +127,7 @@
   function onLockChange() {
     var stage = document.getElementById('stage');
     mouse.locked = (document.pointerLockElement === stage);
+    if (mouse.locked) { mouse.hadLock = true; mouse.lockBroken = false; }
     // Vypadnutí ze zámku během hry = pauza (uživatel odešel jinam).
     if (!mouse.locked && App.state === 'playing') pause();
   }
@@ -173,6 +175,10 @@
     clearPresses();
     UI.hideOverlays();
     requestLock();
+    // Prohlížeč po Esc někdy zámek myši z klávesnice nedovolí – pak stačí kliknout.
+    setTimeout(function () {
+      if (App.state === 'playing' && !mouse.locked && mouse.hadLock) UI.toast('Klikni do obrazu pro uzamčení myši');
+    }, 350);
   }
 
   function quitToMenu() {
@@ -259,7 +265,11 @@
     var stage = document.getElementById('stage');
     stage.addEventListener('mousedown', function (e) {
       if (e.button !== 0) return;
-      if (App.state === 'playing' && !mouse.locked) requestLock();
+      if (App.state === 'playing' && !mouse.locked) {
+        requestLock();
+        // Klik, který zamyká myš, ještě nestřílí – ledaže zámek v tomhle prostředí nefunguje.
+        if (mouse.hadLock || !mouse.lockBroken) return;
+      }
       mouse.down = true;
     });
     stage.addEventListener('wheel', function (e) {

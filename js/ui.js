@@ -350,7 +350,9 @@
   function on(name, fn) { handlers[name] = fn; }
   function fire(name, arg) { if (handlers[name]) handlers[name](arg); }
 
-  function bindSegmented(rootId, attr, onPick, initial) {
+  var syncers = [];              // funkce, které promítnou settings zpět do ovládacích prvků
+
+  function bindSegmented(rootId, attr, onPick, initial, getter) {
     var root = $(rootId);
     if (!root) return;
     var btns = root.querySelectorAll('.seg-btn');
@@ -369,6 +371,7 @@
       })(btns[i]);
     }
     if (initial !== undefined) select(initial);
+    if (getter) syncers.push(function () { select(getter()); });
   }
 
   function bindControls() {
@@ -385,27 +388,27 @@
 
     bindSegmented('difficulty', 'data-diff', function (v) {
       settings.difficulty = v; saveSettings();
-    }, settings.difficulty);
+    }, settings.difficulty, function () { return settings.difficulty; });
 
     bindSegmented('opt-look', 'data-look', function (v) {
       settings.look = v; saveSettings();
-    }, settings.look);
+    }, settings.look, function () { return settings.look; });
 
     bindSegmented('opt-mip', 'data-mip', function (v) {
       settings.mip = v; saveSettings();
-    }, settings.mip);
+    }, settings.mip, function () { return settings.mip; });
 
     bindSegmented('opt-filter', 'data-filter', function (v) {
       settings.filter = v; saveSettings();
-    }, settings.filter);
+    }, settings.filter, function () { return settings.filter; });
 
     bindSegmented('opt-smooth', 'data-smooth', function (v) {
       settings.smooth = v; saveSettings(); fire('smooth', v);
-    }, settings.smooth);
+    }, settings.smooth, function () { return settings.smooth; });
 
     bindSegmented('opt-res', 'data-res', function (v) {
       settings.resScale = v; saveSettings(); fire('resolution', v);
-    }, settings.resScale);
+    }, settings.resScale, function () { return settings.resScale; });
 
     var sens = $('opt-sens'), sensVal = $('opt-sens-val');
     if (sens) {
@@ -429,6 +432,23 @@
         fire('volume', settings.volume);
       });
     }
+    syncers.push(function () {
+      if (sens) { sens.value = Math.round(settings.sens * 100); if (sensVal) sensVal.textContent = settings.sens.toFixed(2); }
+      if (vol) { vol.value = Math.round(settings.volume * 100); if (volVal) volVal.textContent = String(Math.round(settings.volume * 100)); }
+    });
+
+    if ((b = $('btn-defaults'))) b.addEventListener('click', resetSettings);
+  }
+
+  /** Smaže uložené nastavení a vrátí všechno na výchozí hodnoty (i v UI a ve hře). */
+  function resetSettings() {
+    try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+    for (var k in DEFAULTS) settings[k] = DEFAULTS[k];   // stejný objekt – drží ho i hra
+    for (var i = 0; i < syncers.length; i++) syncers[i]();
+    fire('resolution', settings.resScale);
+    fire('smooth', settings.smooth);
+    fire('volume', settings.volume);
+    toast('Nastavení vráceno na výchozí', 'good');
   }
 
   /* ============================================================
@@ -450,6 +470,7 @@
     init: init,
     settings: settings,
     saveSettings: saveSettings,
+    resetSettings: resetSettings,
 
     showOverlay: showOverlay,
     hideOverlays: hideOverlays,

@@ -31,7 +31,7 @@ ne jako ES moduly — díky tomu hra běží i z `file://`.
 | `1` `2` `3` `4` (česky `+` `ě` `š` `č`) | nůž / pistole / samopal / brokovnice |
 | `Q`, kolečko myši | přepínání zbraní |
 | `Tab` | velká mapa (nepřátelé jen ti, na které právě vidíš) |
-| `Esc` | pauza a nastavení (citlivost, zvuk, vertikální pohled, rozlišení, mipmapy, filtr textur, vyhlazení) |
+| `Esc` | pauza a nastavení; další `Esc` vrátí do hry. Nastavení se ukládá v prohlížeči (`localStorage`), tlačítko *Výchozí nastavení* ho smaže |
 
 ## Levely
 
@@ -116,7 +116,7 @@ Psi nic z toho nedělají — běží přímo.
 | Nůž | — | na blízko, tichý |
 | Pistole P08 | náboje | přesná, semi-auto |
 | Samopal MP-40 | náboje | automat, větší rozptyl |
-| Brokovnice | broky (max 30) | 7 broků v kuželu, každý vlastní hitscan — může trefit víc cílů, na dálku slabá |
+| Brokovnice | broky (max 30) | 8 broků v kuželu, každý vlastní hitscan — může trefit víc cílů. Zblízka ~100 na ránu (důstojník padne na jednu), na 8 dlaždic ~40, na 12 už jako pistole |
 
 ## Struktura kódu
 
