@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="color-scheme" content="dark">
+<title>WOLF·JS — Raycasting FPS</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ==================== HERNÍ PLOCHA ==================== -->
+  <div id="stage">
+
+    <canvas id="screen" width="640" height="400"></canvas>
+
+    <!-- post-process vrstvy -->
+    <div id="scanlines" class="fx-layer"></div>
+    <div id="vignette" class="fx-layer"></div>
+    <div id="flash-damage" class="fx-layer flash"></div>
+    <div id="flash-pickup" class="fx-layer flash"></div>
+
+    <!-- zaměřovač -->
+    <div id="crosshair" aria-hidden="true">
+      <span class="ch ch-t"></span><span class="ch ch-r"></span>
+      <span class="ch ch-b"></span><span class="ch ch-l"></span>
+      <span class="ch ch-dot"></span>
+    </div>
+
+    <!-- minimapa -->
+    <div id="minimap-wrap">
+      <canvas id="minimap" width="180" height="180"></canvas>
+      <div class="mm-label">MAPA <kbd>Tab</kbd></div>
+    </div>
+
+    <!-- toast zprávy -->
+    <div id="toasts"></div>
+
+    <!-- ==================== OVERLAYE ==================== -->
+
+    <div id="overlay-menu" class="overlay">
+      <div class="panel panel-wide">
+        <h1 class="logo">WOLF<span>·</span>JS</h1>
+        <p class="tagline">Raycasting FPS &nbsp;//&nbsp; 3 sektory &nbsp;//&nbsp; 4 zbraně &nbsp;//&nbsp; 2 bossové</p>
+
+        <div class="menu-row">
+          <span class="menu-row-label">Obtížnost</span>
+          <div class="seg" id="difficulty" role="radiogroup">
+            <button class="seg-btn" data-diff="0">Můžu i chodit</button>
+            <button class="seg-btn is-active" data-diff="1">Přiveďte je</button>
+            <button class="seg-btn" data-diff="2">Smrt vlkovi</button>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-start">Nová hra</button>
+          <button class="btn" id="btn-controls">Ovládání</button>
+        </div>
+        <p class="hint">Tip: po startu klikni do obrazu pro uzamčení myši.</p>
+      </div>
+    </div>
+
+    <div id="overlay-controls" class="overlay hidden">
+      <div class="panel panel-wide">
+        <h2>Ovládání</h2>
+        <dl class="keys-list">
+          <div><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>pohyb / úkrok</dd></div>
+          <div><dt><kbd>Myš</kbd></dt><dd>rozhlížení, i nahoru a dolů</dd></div>
+          <div><dt><kbd>PgUp</kbd><kbd>PgDn</kbd></dt><dd>pohled nahoru / dolů bez myši</dd></div>
+          <div><dt><kbd>←</kbd><kbd>→</kbd></dt><dd>otáčení bez myši</dd></div>
+          <div><dt><kbd>Shift</kbd></dt><dd>sprint</dd></div>
+          <div><dt><kbd>LMB</kbd> / <kbd>Ctrl</kbd></dt><dd>střelba</dd></div>
+          <div><dt><kbd>E</kbd> / <kbd>Mezerník</kbd></dt><dd>dveře, tlačítka, tajné zdi</dd></div>
+          <div><dt><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></dt><dd>nůž / pistole / samopal / brokovnice (česky <kbd>+</kbd><kbd>ě</kbd><kbd>š</kbd><kbd>č</kbd>)</dd></div>
+          <div><dt><kbd>Q</kbd> <kbd>Kolečko</kbd></dt><dd>další zbraň</dd></div>
+          <div><dt><kbd>Tab</kbd></dt><dd>velká mapa</dd></div>
+          <div><dt><kbd>Esc</kbd></dt><dd>pauza</dd></div>
+        </dl>
+        <div class="btn-row"><button class="btn btn-primary" id="btn-controls-back">Zpět</button></div>
+      </div>
+    </div>
+
+    <div id="overlay-pause" class="overlay hidden">
+      <div class="panel panel-wide">
+        <h2>Pauza</h2>
+        <div class="menu-row">
+          <span class="menu-row-label">Citlivost myši</span>
+          <input type="range" id="opt-sens" min="20" max="300" value="100">
+          <span class="menu-row-value" id="opt-sens-val">1.00</span>
+        </div>
+        <div class="menu-row">
+          <span class="menu-row-label">Zvuk</span>
+          <input type="range" id="opt-vol" min="0" max="100" value="70">
+          <span class="menu-row-value" id="opt-vol-val">70</span>
+        </div>
+        <div class="menu-row">
+          <span class="menu-row-label">Pohled myší</span>
+          <div class="seg" id="opt-look">
+            <button class="seg-btn is-active" data-look="1">Volný</button>
+            <button class="seg-btn" data-look="2">S návratem</button>
+            <button class="seg-btn" data-look="0">Jen do stran</button>
+          </div>
+        </div>
+        <div class="menu-row">
+          <span class="menu-row-label">Rozlišení</span>
+          <div class="seg" id="opt-res">
+            <button class="seg-btn" data-res="0.6">Nízké</button>
+            <button class="seg-btn is-active" data-res="1">Střední</button>
+            <button class="seg-btn" data-res="2">Vysoké</button>
+          </div>
+        </div>
+        <div class="menu-row">
+          <span class="menu-row-label">Filtr textur</span>
+          <div class="seg" id="opt-filter">
+            <button class="seg-btn is-active" data-filter="0">Ostrý</button>
+            <button class="seg-btn" data-filter="1">Svisle</button>
+            <button class="seg-btn" data-filter="2">Bilineární</button>
+          </div>
+        </div>
+        <div class="menu-grid">
+          <div class="menu-cell">
+            <span class="menu-row-label">Mipmapy</span>
+            <div class="seg" id="opt-mip">
+              <button class="seg-btn is-active" data-mip="1">Zap</button>
+              <button class="seg-btn" data-mip="0">Vyp</button>
+            </div>
+          </div>
+          <div class="menu-cell">
+            <span class="menu-row-label">Vyhlazení</span>
+            <div class="seg" id="opt-smooth">
+              <button class="seg-btn is-active" data-smooth="0">Vyp</button>
+              <button class="seg-btn" data-smooth="1">Zap</button>
+            </div>
+          </div>
+        </div>
+        <p class="hint hint-tight">Svisle = jen řádky stěn, skoro zadarmo, textura zůstane ostrá. Bilineární rozmazává a stojí výkon.
+        Mipmapy ruší třpytění v dálce. Vyhlazení hladce zmenšuje obraz — s vysokým rozlišením je to supersampling.</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-resume">Pokračovat</button>
+          <button class="btn btn-danger" id="btn-quit">Konec hry</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="overlay-dead" class="overlay hidden">
+      <div class="panel">
+        <h2 class="doom">Padl jsi</h2>
+        <p class="stat-line" id="dead-stats">—</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-retry">Zkusit znovu</button>
+          <button class="btn" id="btn-dead-menu">Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="overlay-win" class="overlay hidden">
+      <div class="panel panel-wide">
+        <h2 class="win" id="win-title">Sektor vyčištěn!</h2>
+        <div class="score-table" id="win-stats"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-win-next">Další sektor</button>
+          <button class="btn" id="btn-win-menu">Do menu</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="overlay-loading" class="overlay hidden">
+      <div class="panel">
+        <h2>Generuji textury…</h2>
+        <div class="loadbar"><div class="loadbar-fill" id="loadbar-fill"></div></div>
+      </div>
+    </div>
+
+  </div><!-- /#stage -->
+
+  <!-- ==================== STATUS BAR ==================== -->
+  <div id="hud">
+    <div class="hud-inner">
+
+      <div class="hud-cell">
+        <span class="hud-label">Sektor</span>
+        <span class="hud-value" id="hud-floor">1</span>
+      </div>
+
+      <div class="hud-cell hud-wide">
+        <span class="hud-label">Skóre</span>
+        <span class="hud-value" id="hud-score">0</span>
+      </div>
+
+      <div class="hud-cell">
+        <span class="hud-label">Životy</span>
+        <span class="hud-value" id="hud-lives">3</span>
+      </div>
+
+      <div class="hud-face">
+        <canvas id="face" width="52" height="60"></canvas>
+      </div>
+
+      <div class="hud-cell hud-wide">
+        <span class="hud-label">Zdraví</span>
+        <span class="hud-value" id="hud-health">100<i>%</i></span>
+        <div class="bar"><div class="bar-fill bar-health" id="hud-health-bar"></div></div>
+      </div>
+
+      <div class="hud-cell hud-wide">
+        <span class="hud-label" id="hud-ammo-label">Náboje</span>
+        <span class="hud-value" id="hud-ammo">8</span>
+        <div class="bar"><div class="bar-fill bar-ammo" id="hud-ammo-bar"></div></div>
+      </div>
+
+      <div class="hud-cell">
+        <span class="hud-label">Klíče</span>
+        <div class="keys">
+          <span class="key key-gold"   id="key-gold"   title="Zlatý klíč"></span>
+          <span class="key key-silver" id="key-silver" title="Stříbrný klíč"></span>
+        </div>
+      </div>
+
+      <div class="hud-cell hud-weapon">
+        <span class="hud-label">Zbraň</span>
+        <canvas id="weapon-icon" width="72" height="34"></canvas>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /#app -->
+
+<script src="js/ui.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/map.js"></script>
+<script src="js/raycaster.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/weapons.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
