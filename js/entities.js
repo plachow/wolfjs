@@ -71,8 +71,10 @@
   };
 
   var DECO = {
-    pillar:  { spr: 'pillar',  blocking: true,  scale: 1.0 },
-    barrel:  { spr: 'barrel',  blocking: true,  scale: 1.0, radius: 0.34 },
+    // solid = neprůstřelné: zastaví střelu i pohled → krytí pro hráče i nepřátele.
+    // Stoly a ohniště jsou nízké, přes ty se střílí.
+    pillar:  { spr: 'pillar',  blocking: true,  solid: true, scale: 1.0 },
+    barrel:  { spr: 'barrel',  blocking: true,  solid: true, scale: 1.0, radius: 0.34 },
     table:   { spr: 'table',   blocking: true,  scale: 1.0, radius: 0.38 },
     brazier: { spr: 'brazier0', blocking: true, scale: 1.0, radius: 0.3, anim: true, glow: true },
     bones:   { spr: 'bones',   blocking: false, scale: 1.0 },
@@ -83,6 +85,7 @@
      STAV
      ============================================================ */
   var enemies = [], items = [], decos = [], sprites = [];
+  var solid = null;                  // Uint8Array: buňky s neprůstřelnou dekorací (sud, sloup)
   var stats = { kills: 0, totalKills: 0, treasure: 0, totalTreasure: 0, secrets: 0, totalSecrets: 0 };
   var hooks = {};
   var diff = 1;
@@ -103,6 +106,7 @@
     stats.secrets = 0;
     stats.totalSecrets = level.secrets.length;
     flow = null; flowCell = -1;
+    solid = new Uint8Array(level.w * level.h);
 
     var dmgMul = [0.6, 1, 1.45][difficulty] || 1;
     var hpMul = [0.8, 1, 1.15][difficulty] || 1;
@@ -153,6 +157,7 @@
           blocking: dc.blocking, scale: dc.scale,
           frame: spr(dc.spr), glow: dc.glow, anim: dc.anim
         });
+        if (dc.solid) solid[(y | 0) * level.w + (x | 0)] = 1;
       }
     }
 
@@ -242,7 +247,11 @@
      GEOMETRIE
      ============================================================ */
 
-  /** Přímá viditelnost; výchozí a cílová buňka se ignorují. */
+  /**
+   * Přímá viditelnost (a průchodnost pro střelu); výchozí a cílová buňka
+   * se ignorují. Kromě zdí a zavřených dveří ji blokují i neprůstřelné
+   * dekorace – sudy a sloupy, za které se dá schovat.
+   */
   function los(x0, y0, x1, y1) {
     var dx = x1 - x0, dy = y1 - y0;
     var len = Math.sqrt(dx * dx + dy * dy);
@@ -257,6 +266,7 @@
       var cx = x | 0, cy = y | 0;
       if ((cx === ax && cy === ay) || (cx === bx && cy === by)) continue;
       if (W.Map.opaque(cx, cy)) return false;
+      if (solid && solid[cy * W.Map.level.w + cx]) return false;
     }
     return true;
   }

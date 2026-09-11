@@ -98,6 +98,8 @@ neotevřeš dveře) nestojí žádný nepřítel.
   zastaví, aby vystřelil.
 - **Krytí** — po dávce se s pravděpodobností `coverChance` (vyšší, když je
   zraněný) přesune na blízkou dlaždici, kam nevidíš, chvíli počká a vykoukne.
+  **Sudy a sloupy jsou neprůstřelné** — zastaví střelu i pohled oběma směrům,
+  takže slouží jako kryt tobě i jim (stoly a ohniště jsou nízké, přes ty se střílí).
 - **Stráže** — vojáci do 3 dlaždic od klíče nebo páky drží stanoviště:
   střílejí z místa a nepronásledují dál než na délku vodítka.
 - **Navigace** — BFS flow-field od hráče (přepočet ~3× za sekundu); když tě
